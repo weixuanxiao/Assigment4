@@ -1,0 +1,584 @@
+---
+title: "Reproducible Data Analysis Project"
+author: "weixuan xiao"
+date: '2022-05-08'
+output: html_document
+---
+
+Knitr Report
+=============
+
+# 1.Introduction
+This section provide some relevant background information and justification for the project.
+
+1.The American Professional Basketball League is a men's professional basketball league composed of 30 professional teams.
+
+There are five different positions defined in the rules of basketball.
+
+2.Chicago Bull place 27th out of 30 in 2018-19 season, and  own 112,598,201$ budgets in the 2019-2020 season
+
+3.The aim of this project is firstly anaalysis what key metrics cause higher team rank, secondary find out what key metrics determine better players,thirdly is find the best five starting players through the previous analysis.
+
+4. Create a multiple linear regression model measure relationship between and different key metrics with total wins, other multiple regression model measure the relationship between different key metrics, justify the model then select best five starting players.
+
+
+##2.load all the required library
+```{r read package, message = FALSE, echo=TRUE}
+library(tidyverse)
+library(broom)
+library(ggplot2)
+library(car)
+
+```
+
+
+###Reading raw data
+#
+```{r  Read Data, message=FALSE, echo = TRUE, results='hide'}
+team_playroll <- read_csv("2019-20_nba_team-payroll.csv")
+
+team_statistics1 <- read_csv("2018-19_nba_team-statistics_1.csv")
+team_statistics1
+
+team_statistics2 <- read_csv("2018-19_nba_team-statistics_2.csv")
+
+
+player_salaries <- read_csv("2018-19_nba_player-salaries.csv")
+player_salaries
+
+player_statistic <- read_csv("2018-19_nba_player-statistics.csv")
+
+str(team_playroll) #provides structure
+head(team_playroll) #shows first 6 rows
+tail(team_playroll) #shows last 6 rows
+
+str(player_salaries) #provides structure
+head(player_salaries) #shows first 6 rows
+tail(player_salaries) #shows last 6 rows
+
+str(player_statistic) #provides structure
+head(player_statistic) #shows first 6 rows
+tail(player_statistic) #shows last 6 rows
+
+str(team_statistics1) #provides structure
+head(team_statistics1) #shows first 6 rows
+tail(team_statistics1) #shows last 6 rows
+
+str(team_statistics2) #provides structure
+head(team_statistics2) #shows first 6 rows
+tail(team_statistics2) #shows last 6 rows
+```
+
+###Cleaning raw data
+```{r combine and move Na, message=FALSE, echo = TRUE, results='hide'}
+team_statistics_sum <- left_join(team_statistics1,team_statistics2,by = "Team")
+
+colSums(is.na(team_statistics_sum))
+                      
+
+team_statistics_sum <- team_statistics_sum %>% 
+                        select(-"...23",-"...24",-"...25", -"Rk.y")
+
+team_statistics_sum <- team_statistics_sum %>%
+ rename( "FG_PERCENTAGE" = "FG%", "THREE_P" = "3P", "THREE_P_ATTEMPTS" = "3PA","THREE_POINT_PERCENTAGE" = "3P%", 
+        "TWO_P" = "2P", "TWO_P_ATTEMPTS" = "2PA","TWO_POINT_PERCENTAGE" = "2P%",
+        "FREE_THROW_PERCENTAGE" = "FT%", "THREE_POINT_ATTEMPT_RATE" = "3PAr", "TRUE_SHOOTING_PRCENTAGE" = "TS%",
+        "Effective_Field_Goal_Percentage" = "eFG%", "Turnover_Percentage" = "TOV%",
+        "Offensive_Rebound_Percentage" = "ORB%", "Defensive_Rebound_Percentage" = "DRB%")
+                        
+```
+
+
+
+
+##Exploratory analysis
+
+*Create visualizations to determine how each individual explanatory variable  relates to the response variable.*
+
+
+**Individual Offensive and Defensive Ratings, ORtg, DRtg functions are efficiency metricsdeveloped by Dean Oliver in his 2004 book Basketball on Paper.**
+
+*ORtg: Offensive Rating; An estimate of points produced (players) or scored (teams) per 100 possessions  
+
+*DRtg : Defensive Rating; An estimate of points allowed per 100 possessions  
+
+*NRtg: Net Rating; an estimate of point differential per 100 possessions 
+
+```{r visulizations}
+ggplot(data = team_statistics_sum, aes(x = ORtg, y = W ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 39, colour = "black", linetype = "dashed")
+
+
+
+ggplot(data = team_statistics_sum, aes(x = DRtg, y = L ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 39, colour = "black", linetype = "dashed")
+
+
+
+ggplot(data = team_statistics_sum, aes(x = NRtg, y = W ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_hline(yintercept = 39, colour = "black", linetype = "dashed")
+
+ggplot(data = team_statistics_sum, aes(x = Effective_Field_Goal_Percentage, y = W ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+
+ggplot(data = team_statistics_sum, aes(x = TRUE_SHOOTING_PRCENTAGE, y = W ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+
+
+ggplot(data = team_statistics_sum, aes(x = Effective_Field_Goal_Percentage, y = ORtg ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+
+ggplot(data = team_statistics_sum, aes(x = TRUE_SHOOTING_PRCENTAGE, y = ORtg ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+
+
+ggplot(data = team_statistics_sum, aes(x = FG, y = W ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+
+
+
+ggplot(data = team_statistics_sum, aes(x = TRB, y = W ))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+
+ggplot(data = team_statistics_sum, aes(x = TRB, y = DRtg))+
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+ 
+
+
+```
+
+**Those graph shows that higher offensive key metrics are highly positively correlated with total wins, while more Total rebounds are highly positively correlated with higher defensive ratings.**
+
+
+##Create a multiple linear regression model determine whether key metrics influence Total wins.
+```{r model1}
+fit <- lm(W ~ ORtg + DRtg , data = team_statistics_sum)
+tidy(fit,conf.int = TRUE)
+summary(fit)
+
+```
+
+
+
+**intercept coefficient = -7.77, meaning that when ORtg and DRtg is 0, expected Total wins is -7.77.**
+**this does not make much practical sense as ORtg and DRtg  will never be 0 and Total wins can not be a negative, it is juct a starting for the model.**
+
+
+**slope coefficient = 2.64, meaning that for every 1 unit that ORtg is incresaed, the expected Total wins increases by 2.64.**
+
+**slope coefficient = -2.20, meaning that for every 1 unit that DRtg is incresaed, the expected Total wins increases by -2.20.**
+
+**Multiple  R-squared = 0.9644, meaning that 96.44% of the variance in Total wins is explained by the variance in ORtg and DRtg.**
+
+
+##Independce for model 1
+
+**There should be a linear relationship between the response variable (W) and each explanatory variable.**
+
+
+```{r model1 independence check}
+#Determine if our linear regression meets the assumption of independence of observations.
+car::durbinWatsonTest(fit)
+```
+
+**The results are 1.70813, which is close to the recommended 2 to ensure independence. thus we have not failed this assumption.**
+
+## 5. Outliers, Influential and  High Leverage Points for model1
+**Outliers influential high leveage point leverage cause unreliable model identify any and potentially remove them from the model **
+
+```{r model1 outlier}
+std_res <- rstandard(fit)
+points <- 1:length(std_res)
+ggplot(data = NULL, aes(x = points, y = std_res)) +
+  geom_point() +
+  ylim(c(-4,4)) +
+  geom_hline(yintercept = c(-3, 3), colour = "red", linetype = "dashed")
+```
+
+** There does not appear to be any outliers as all standardized residuals are less than 3,all points are within 2 standard deviations from 0 **
+
+
+**Determine if there are any high leverage points that have the potential to influence the model.**
+```{r model1 leveage point}
+#Check to see if any of the potential outliers create leverage, using hatvalues.
+hats <- hatvalues(fit)
+
+ggplot(data = NULL, aes(x = points, y = hats)) +
+  geom_point()
+
+
+hat_labels <- if_else(hats >= 0.20, paste(points), "")
+
+ggplot(data = NULL, aes(x = points, y = hats)) +
+  geom_point() +
+  geom_text(aes(label = hat_labels), nudge_y = 0.005)
+
+
+
+ggplot(data = team_statistics_sum, aes(x = ORtg, y = W)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_text(aes(label = hat_labels), nudge_x = 1)
+
+
+
+ggplot(data = team_statistics_sum, aes(x = DRtg, y = W)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_text(aes(label = hat_labels), nudge_x = 1)
+```
+**There do not appear to be any leverage points as all hatvalues are closer to 0 than 1, although there are a points (30) in particular that are above 0.2 that we should look at potentially investigating.**
+
+```{r model_1 cooks distance}
+#Check for influence on the linear regression by potential outliers.
+
+cook <- cooks.distance(fit)
+
+
+ggplot(data = NULL, aes(x = points, y = cook)) +
+  geom_point()
+
+
+cook_labels <- if_else(cook >= 0.15, paste(points), "")
+
+
+ggplot(data = team_statistics_sum, aes(x = DRtg, y = W)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_text(aes(label = cook_labels), nudge_x = 1)
+
+
+ggplot(data = team_statistics_sum, aes(x = ORtg, y = W)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) +
+  geom_text(aes(label = cook_labels), nudge_x = 1)
+
+```
+
+**It does not appear that points 30 are showing any influence or leverage in this instance, but this TIME  the  POINT 21   has shown up in our checks for validity.**
+
+
+```{r Cooks Distance_DRtg}
+ggplot(team_statistics_sum, aes(x = ORtg, y = W))+
+  geom_point(alpha = 1, colour = "blue")+
+  geom_smooth(method = "lm", colour = "blue")+
+  theme_gray()+
+  geom_text(aes(label = cook_labels), nudge_y = 0.5)
+```
+
+
+
+```{r  Cooks Distance_ORtg}
+ggplot(team_statistics_sum, aes(x = DRtg, y = W))+
+  geom_point(alpha = 1, colour = "blue")+
+  geom_smooth(method = "lm", colour = "blue")+
+  theme_gray()+
+  geom_text(aes(label = cook_labels), nudge_y = 0.5)
+```
+
+**21 show in both graph **
+
+```{r re-run model_1 with filtered_df}
+# create new df without the high influence points
+outliers <- c(21)
+filtered_df <- team_statistics_sum %>%
+  filter(!"RK.x" %in% outliers) 
+
+
+fit <- lm(W ~ ORtg + DRtg , data = filtered_df)
+tidy(fit,conf.int = TRUE)
+summary(fit)
+
+ggplot(data = filtered_df, aes(x = ORtg, y = W)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE) 
+
+  ggplot(data = filtered_df, aes(x = DRtg, y = W)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+
+```
+** both the slope and intercept coefficients haven't change too,the R-squared value has remain the same values**
+
+
+##Homoscedasticity
+
+**The data needs to show homoscedasticity.**
+```{r model_1_Homoscedasticity}
+
+res <- residuals(fit)
+fitted <- predict(fit) 
+
+ggplot(data = NULL, aes(x = fitted, y = res)) +
+  geom_point(colour = "dodgerblue") + 
+  geom_hline(yintercept = 0, colour = "red", linetype = "dashed")
+
+ggplot(data = NULL, aes(x = res)) +
+  geom_histogram(colour = "black", fill = "dodgerblue", binwidth = 5)
+
+ggplot(data = NULL, aes(sample = res)) +
+  stat_qq() + stat_qq_line()
+```
+**There does not appear to be evidence of heteroscedasticity **
+**This randomisation of the data shows homoscedasticity, the points appear normal distribution**
+
+
+
+```{r}
+fit_2 <- lm(ORtg ~ Effective_Field_Goal_Percentage + FREE_THROW_PERCENTAGE+ FG + TRB, data = team_statistics_sum)
+tidy(fit_2,conf.int = TRUE)
+summary(fit_2)
+```
+
+
+##The second multiple linear regression model 
+**The previous multiple linear regressionindicate ORtg have huge distribution with the total wins,next we create a new model see what other key metrics relate to ORtg **
+```{r model_2}
+fit_2 <- lm(ORtg ~ Effective_Field_Goal_Percentage + FREE_THROW_PERCENTAGE+ FG + TRB, data = team_statistics_sum)
+tidy(fit_2,conf.int = TRUE)
+summary(fit_2)
+```
+**intercept coefficient = 2.20, meaning that when EFGP  FTP, FG, TRB is 0, expected ORtg is 2.22.**
+**The FG been select is Effective_Field_Goal_Percentage only make sense when the numbers of score or shot sample is large**
+
+
+**slope coefficient = 125, meaning that for every 1 unit that Effective_Field_Goal_Percentage is increased, the expected ORTG increases by 2.64.**
+
+**slope coefficient = 32.1, meaning that for every 1 unit that FREE_THROW_PERCENTAGE is incresaed, the expected ORTG increases by 32.1.**
+
+**slope coefficient = 0.000254, meaning that for every 1 unit that FG is increased, the expected ORTG increases by 0.254%.**
+**slope coefficient = 0.00459, meaning that for every 1 unit that TRB is increased, the expected ORTG increases by 0.459%.**
+
+**Multiple  R-squared = 0.7746, meaning that 77.46% of the variance in ORtgs is explained by the variance in Effective_Field_Goal_Percentage,FREE_THROW_PERCENTAGE,FG and TRB.**
+
+
+##Indepence for moedel_2
+88Determine if our linear regression meets the assumption of independence of observations.**
+```{r indepence_model2}
+car::durbinWatsonTest(fit_2)
+```
+**Our results are 1.37 which is close to the recommended 2 to ensure independence,thus we have not failed this assumption. **
+
+
+
+**Are there any outliers?**
+```{r outliers_model2}
+std_res_2 <- rstandard(fit_2)
+points_2 <- 1:length(std_res)
+
+ggplot(data = NULL, aes(x = points_2, y = std_res_2)) +
+  geom_point() +
+  ylim(c(-4,4)) +
+  geom_hline(yintercept = c(-3, 3), colour = "red", linetype = "dashed")
+```
+** there does not appear to be any outliers as all standardised residuals are less than 3**
+
+
+**Are there any leverage points?**
+```{r leverage_model_2}
+#Determine if there are any high leverage points that have the potential to influence the model.
+hats2 <- hatvalues(fit_2)
+
+
+ggplot(data = NULL, aes(x = points_2, y = hats2)) +
+  geom_point()
+
+hat_labels2 <- if_else(hats >= 0.30, paste(points), "")
+
+
+ggplot(data = NULL, aes(x = points_2, y = hats2)) +
+  geom_point() +
+  geom_text(aes(label = hat_labels2), nudge_y = 0.05)
+```
+**There are no hatvalues greater than 1**
+
+
+
+```{r model2_influence_point}
+#Check for influence on the linear regression by potential outliers.
+cook2 <- cooks.distance(fit_2)
+
+
+ggplot(data = NULL, aes(x = points_2, y = cook2)) +
+  geom_point()
+
+cook_labels2 <- if_else(cook2 >= 0.6, paste(points_2), "")
+
+
+ggplot(data = NULL, aes(x = points_2, y = cook2)) +
+  geom_point() +
+  geom_text(aes(label = cook_labels2), nudge_x = 1)
+
+```
+**Point 5 havs show up** 
+
+```{r check influence}
+#We will double check each of the explanaotry variables against points 5 to see if we have any high leverage Had high influence.
+ggplot(data = team_statistics_sum, aes(x = Effective_Field_Goal_Percentage, y = ORtg)) +
+  geom_point(colour = "dodgerblue") +
+  geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+  geom_text(aes(label = cook_labels2), nudge_x = 1)
+
+  ggplot(data = team_statistics_sum, aes(x = FREE_THROW_PERCENTAGE , y = ORtg)) +
+    geom_point(colour = "dodgerblue") +
+    geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+  geom_text(aes(label = cook_labels2), nudge_x = 1)  
+  
+  
+  ggplot(data = team_statistics_sum, aes(x = FG, y = ORtg)) +
+    geom_point(colour = "dodgerblue") +
+    geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+  geom_text(aes(label = cook_labels2), nudge_x = 1)  
+  
+  ggplot(data = team_statistics_sum, aes(x = TRB, y = ORtg)) +
+    geom_point(colour = "dodgerblue") +
+    geom_smooth(method = "lm", colour = "magenta", se = FALSE)
+  geom_text(aes(label = cook_labels2), nudge_x = 1)  
+
+```
+
+
+**point 5 not show high leverage or high influence.**
+
+##Homoscedasticity
+```{r model_2_Homoscedasticity}
+##Check your model for any evidence of heteroscedasticity.
+
+res_2 <- residuals(fit_2)
+fitted_2 <- predict(fit_2)  # or can use fitted()
+ggplot(data = NULL, aes(x = fitted_2, y = res_2)) +
+  geom_point(colour = "dodgerblue") + 
+  geom_hline(yintercept = 0, colour = "red", linetype = "dashed")
+
+ggplot(data = NULL, aes(x = res_2)) +
+  geom_histogram(colour = "black", fill = "dodgerblue", binwidth = 5)
+
+ggplot(data = NULL, aes(sample = res_2)) +
+  stat_qq() + stat_qq_line()
+```
+**There does not appear to be evidence of heteroscedasticity **
+**This randomisation of the data shows homoscedasticity, the points appear normal distribution**
+
+
+##Combine the players dataset and clean the raw data
+```{r Combine and read dataset}
+player_statistic <- player_statistic %>%
+  group_by(player_name) %>%
+  filter(G == max(G)) %>%
+  ungroup()
+
+player_statistic <- left_join(player_statistic,player_salaries, by = "player_name")
+
+
+colSums(is.na(player_statistic))
+
+player_statistic[is.na(player_statistic)] = 0
+
+player_statistic <- player_statistic %>% 
+          mutate(average_2PA = sum(`2PA`)/530,
+                 average_3PA = sum(`3PA`)/530,
+                 average_FT = sum(`FT`)/530)
+```
+
+##SG_Player select
+```{r SG_Palyer}
+#select player base on previous models analysis outcome
+SG_player <- player_statistic %>% 
+     group_by(player_name) %>% 
+     filter(Pos ==  "SG", `2PA` > average_2PA,`3PA`> average_3PA, `FT` >average_FT) %>%   
+     select(player_name,`GS`,Pos,`FT%`,`eFG%`,`FG`,`FG%`,`AST`,`salary`) %>% 
+     arrange(desc(`eFG%`))
+SG_player
+
+```
+ **Select Buddy Hieldas he has better Performance better but lower price **
+
+##PG_Player select
+```{r PG_Player}
+#select player base on previous models analysis outcome
+PG_player <- player_statistic %>% 
+  group_by(player_name) %>% 
+  filter(Pos ==  "PG", `2PA` > average_2PA,`3PA`> average_3PA, `FT` >average_FT) %>%   
+  select(player_name,`GS`,`FT%`,`eFG%`,`FG`,`FG%`,`AST`,`salary`) %>% 
+  arrange(desc(`eFG%`))
+PG_player
+```
+ **Select DJ Augustin as he has better Performance better but lower price **
+
+
+##SF_Player select
+```{r SF_Player}
+#select player base on previous models analysis outcome
+SF_player <- player_statistic %>% 
+  group_by(player_name) %>% 
+  filter(Pos ==  "SF", `2PA` > average_2PA,`3PA`> average_3PA, `FT` >average_FT) %>%   
+  select(player_name,`GS`,`FT%`,`eFG%`,`FG`,`FG%`,`AST`,`salary`) %>% 
+  arrange(desc(`eFG%`))
+SF_player
+```
+**Select Kawhi Leonard casue he has better performance during the similar price range **
+
+##PF_Player select
+```{r PF_Player}
+#select player base on previous models analysis outcome
+PF_player <- player_statistic %>% 
+  group_by(player_name) %>% 
+  filter(Pos ==  "PF", `2PA` > average_2PA,`3PA`> average_3PA, `FT` >average_FT) %>%   
+  select(player_name,`GS`,`FT%`,`eFG%`,`FG`,`FG%`,`AST`,`salary`) %>% 
+  arrange(desc(`eFG%`))
+PF_player
+```
+ **Select Pascal Siakam	 Towns as he has better Performance better but lower price **
+
+
+
+##C_Player select
+```{r C_Player}
+#select player base on previous models analysis outcome
+C_player <- player_statistic %>% 
+  group_by(player_name) %>% 
+  filter(Pos ==  "C", `2PA` > average_2PA,`3PA`> average_3PA, `FT` >average_FT) %>%   
+  select(player_name,`GS`,`FT%`,`eFG%`,`FG`,`FG%`,`TRB`,`salary`) %>% 
+  arrange(desc(`TRB`))
+C_player
+```
+ **Select Karl-Anthony Towns as he has better Performance better but lower price **
+ **Our starting team would cost $43,582，212. Leaving us approximately $44 million to secure the rest of the roster. **
+
+
+ 
+## Summary
+```{r outcome}
+#Team with a higher ORtg and lower DRtg tend to win more games, however the R-squared value of 96.44% indicates that there are other factors that contribute to Total wins and these should be investigated. 
+#The second  models show with higher eFG%, FG, TS ,TRB tend to have higher ORtg, r the R-squared value of 77.46% indicates that there are other factors that contribute to ORtgand these should be investigated. 
+##The limitations of the model are due to the lack of some key metrics, such as players ball possession per game,and more defensive metrics should be considered
+
+```
+
+## Reference
+
+[Reference1_rule](ttps://www.basketball-reference.com/about/ratings.html)
+[Reference2_position](https://hoopstudent.com/basketball-positions/)
+
+
+
